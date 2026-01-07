@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Capital Restructuring System V3.7 (CN-Mobile)</title>
+    
+    <!-- 🟢 核心样式：使用国内 Staticfile 源的 Tailwind CSS V2 (100% 国内可访问) -->
+    <link href="https://cdn.staticfile.net/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    
+    <!-- 🟢 核心引擎：使用国内 Staticfile 源的 React -->
+    <script crossorigin src="https://cdn.staticfile.net/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdn.staticfile.net/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.staticfile.net/babel-standalone/7.23.5/babel.min.js"></script>
+    
+    <style>
+        body { background-color: #111827; overscroll-behavior-y: none; }
+        /* iOS 优化 */
+        body { -webkit-tap-highlight-color: transparent; }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* 补充 Tailwind V2 缺失的自定义样式 */
+        .text-xxs { font-size: 10px; line-height: 14px; }
+        .bg-gray-900-50 { background-color: rgba(17, 24, 39, 0.5); }
+        .bg-green-900-20 { background-color: rgba(6, 78, 59, 0.2); }
+        .bg-red-900-20 { background-color: rgba(127, 29, 29, 0.2); }
+        .bg-red-900-50 { background-color: rgba(127, 29, 29, 0.5); }
+        .bg-red-900-30 { background-color: rgba(127, 29, 29, 0.3); }
+        .bg-blue-900-50 { background-color: rgba(30, 58, 138, 0.5); }
+        .bg-yellow-900-20 { background-color: rgba(113, 63, 18, 0.2); }
+        .bg-orange-900-30 { background-color: rgba(124, 45, 18, 0.3); }
+        .bg-gray-800-50 { background-color: rgba(31, 41, 55, 0.5); }
+        
+        .border-blue-500-50 { border-color: rgba(59, 130, 246, 0.5); }
+        .border-purple-500-50 { border-color: rgba(168, 85, 247, 0.5); }
+        .border-yellow-500-50 { border-color: rgba(234, 179, 8, 0.5); }
+        .border-orange-500-50 { border-color: rgba(249, 115, 22, 0.5); }
+        .border-yellow-700-50 { border-color: rgba(161, 98, 7, 0.5); }
+
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 24px;
+            bottom: -16px;
+            width: 2px;
+            background: #374151;
+            z-index: 0;
+        }
+        .timeline-item:last-child .timeline-line::before {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons (保持不变) ---
+        const Icon = ({ path, size = 20, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {path}
+            </svg>
+        );
+
+        const Icons = {
+            Activity: (p) => <Icon {...p} path={<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />} />,
+            TrendingUp: (p) => <Icon {...p} path={<g><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></g>} />,
+            TrendingDown: (p) => <Icon {...p} path={<g><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></g>} />,
+            ShieldAlert: (p) => <Icon {...p} path={<g><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></g>} />,
+            Coffee: (p) => <Icon {...p} path={<g><path d="M18 8h1a4 4 0 0 1 0 8h-1" /><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" /><line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" /></g>} />,
+            Cigarette: (p) => <Icon {...p} path={<g><path d="M2 12h20" /><path d="M22 12v0" /><path d="M18 12v0" /><path d="M2 12v0" /><path d="M18 8v8" /><path d="M22 8v8" /><path d="M2 8v8" /></g>} />, 
+            PlayCircle: (p) => <Icon {...p} path={<g><circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" /></g>} />,
+            Ban: (p) => <Icon {...p} path={<g><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></g>} />,
+            CheckCircle2: (p) => <Icon {...p} path={<g><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="m9 12 2 2 4-4" /></g>} />,
+            Zap: (p) => <Icon {...p} path={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />} />,
+            RotateCcw: (p) => <Icon {...p} path={<g><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></g>} />,
+            ShoppingBag: (p) => <Icon {...p} path={<g><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></g>} />,
+            BookOpen: (p) => <Icon {...p} path={<g><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></g>} />,
+            PenTool: (p) => <Icon {...p} path={<g><path d="m12 19 7-7 3 3-7 7-3-3z" /><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="m2 2 7.586 7.586" /><circle cx="11" cy="11" r="2" /></g>} />,
+            Save: (p) => <Icon {...p} path={<g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></g>} />,
+            Clock: (p) => <Icon {...p} path={<g><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></g>} />,
+            Flame: (p) => <Icon {...p} path={<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />} />,
+            AlertTriangle: (p) => <Icon {...p} path={<g><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></g>} />,
+        };
+
+        const PHASES = [
+            { id: 1, name: "第一阶段：脱敏训练", days: [1, 2, 3], desc: "新手保护期。目标不是戒烟，而是打破'自动吸烟'的习惯。", limit: 10, color: "text-blue-400", borderColor: "border-blue-500-50" },
+            { id: 2, name: "第二阶段：减量控盘", days: [4, 5, 6, 7], desc: "进阶挑战。目标是控制饭后等关键节点的欲望，总量减半。", limit: 5, color: "text-purple-400", borderColor: "border-purple-500-50" },
+            { id: 3, name: "第三阶段：清零决战", days: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], desc: "大师模式。彻底清除尼古丁残留，重塑多巴胺回路。", limit: 0, color: "text-yellow-400", borderColor: "border-yellow-500-50" }
+        ];
+
+        const REWARDS_DATA = [
+            { id: 'game', label: '游戏/娱乐 1小时', cost: 200, icon: <Icons.PlayCircle size={18} /> },
+            { id: 'cola', label: '无糖可乐/零食', cost: 150, icon: <Icons.Coffee size={18} /> },
+            { id: 'cheat_meal', label: '欺骗餐 (火锅/烤肉)', cost: 1500, icon: <Icons.ShoppingBag size={18} /> },
+            { id: 'gear', label: '购买健身/数码装备', cost: 3000, icon: <Icons.Activity size={18} /> },
+        ];
+
+        const LEVELS = [
+            { name: 'LV.0 散户', min: -99999, color: 'text-gray-500' },
+            { name: 'LV.1 觉醒者', min: 0, color: 'text-blue-400' },
+            { name: 'LV.2 游资', min: 1000, color: 'text-purple-400' },
+            { name: 'LV.3 主力', min: 3000, color: 'text-yellow-400' },
+            { name: 'LV.4 庄家', min: 5000, color: 'text-green-400' },
+        ];
+
+        function CapitalRestructuringApp() {
+            const [points, setPoints] = useState(0);
+            const [day, setDay] = useState(1);
+            const [smokeCount, setSmokeCount] = useState(0);
+            const [completedTasks, setCompletedTasks] = useState({}); 
+            const [logs, setLogs] = useState([]); 
+            const [journals, setJournals] = useState([]);
+            const [smokingLogs, setSmokingLogs] = useState([]);
+            const [journalInput, setJournalInput] = useState("");
+            const [activeTab, setActiveTab] = useState('dashboard'); 
+
+            useEffect(() => {
+                let savedData = localStorage.getItem('capital_system_v3_4_html');
+                
+                if (!savedData) {
+                    savedData = localStorage.getItem('capital_system_v3_3_html') || localStorage.getItem('capital_system_v3_2_html');
+                }
+
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        setPoints(Number(parsed.points) || 0);
+                        setDay((Number(parsed.day) || 1) > 21 ? 21 : (Number(parsed.day) || 1));
+                        setSmokeCount(Number(parsed.smokeCount) || 0);
+                        setCompletedTasks(parsed.completedTasks || {});
+                        setLogs(parsed.logs || []);
+                        setJournals(parsed.journals || []);
+                        setSmokingLogs(parsed.smokingLogs || []);
+
+                    } catch (e) {
+                        console.error("存档损坏，重置系统", e);
+                        addLog('存档损坏，已重置系统', 0, 'system');
+                    }
+                } else {
+                    addLog('系统初始化 (CN Line)', 0, 'system');
+                }
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('capital_system_v3_4_html', JSON.stringify({
+                    points, day, smokeCount, completedTasks, logs, journals, smokingLogs
+                }));
+            }, [points, day, smokeCount, completedTasks, logs, journals, smokingLogs]);
+
+            const getDayKey = () => `day_${day}`;
+            const getCurrentPhase = () => PHASES.find(p => p.days.includes(day)) || PHASES[PHASES.length - 1];
+            const getCurrentLevel = () => LEVELS.slice().reverse().find(l => points >= l.min) || LEVELS[0];
+
+            const addLog = (desc, amount, type) => {
+                const newLog = {
+                    id: Date.now(), desc, amount, type, 
+                    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                };
+                setLogs(prev => [newLog, ...prev].slice(0, 50));
+            };
+
+            const getTasksForCurrentPhase = () => {
+                const phase = getCurrentPhase();
+                const tasks = [];
+                tasks.push({ id: 'morning_read', label: '早盘：阅读研报/书籍 (15min)', points: 50, category: '早盘操作' });
+                tasks.push({ id: 'mid_contract', label: '盘中：未打开实盘合约软件', points: 50, category: '盘中风控' });
+                if (phase.id === 1) {
+                    tasks.push({ id: 'morning_delay', label: '早盘：醒来30分钟内未吸烟', points: 50, category: '早盘操作' });
+                    tasks.push({ id: 'mid_game_smoke', label: '盘中：玩游戏/看盘时手边无烟', points: 30, category: '盘中风控' });
+                }
+                if (phase.id === 2) {
+                    tasks.push({ id: 'morning_delay_60', label: '早盘：醒来60分钟内未吸烟', points: 60, category: '早盘操作' });
+                    tasks.push({ id: 'mid_after_meal', label: '盘中：午/晚饭后1小时未吸烟', points: 60, category: '盘中风控' });
+                }
+                if (phase.id === 3) {
+                    tasks.push({ id: 'all_day_zero', label: '全天：一根未抽 (金身)', points: 200, category: '决战时刻' });
+                }
+                return tasks;
+            };
+
+            const handleTaskToggle = (task) => {
+                const key = `${getDayKey()}_${task.id}`;
+                if (completedTasks[key]) return; 
+                setCompletedTasks(prev => ({ ...prev, [key]: true }));
+                setPoints(prev => prev + task.points);
+                addLog(`入账: ${task.label}`, task.points, 'income');
+            };
+
+            const handleJournalSubmit = () => {
+                if (!journalInput.trim()) {
+                    alert("请至少写一个字。");
+                    return;
+                }
+                const newEntry = {
+                    day: day, date: new Date().toLocaleDateString('zh-CN'),
+                    content: journalInput, timestamp: new Date().toLocaleTimeString('zh-CN')
+                };
+                setJournals(prev => [newEntry, ...prev]);
+                setJournalInput("");
+                const taskKey = `${getDayKey()}_end_journal`;
+                if (!completedTasks[taskKey]) {
+                    setCompletedTasks(prev => ({ ...prev, [taskKey]: true }));
+                    setPoints(prev => prev + 30);
+                    addLog(`任务完成: 情绪日志存档`, 30, 'income');
+                }
+                alert("日志已存档！");
+            };
+
+            const handleSmokeIncrement = () => {
+                const reason = window.prompt("【交易录单】\n请录入本次吸烟（开仓）诱因：\n(例如：饭后、焦虑、无聊、跟风、起床)");
+                if (reason === null) return;
+
+                const now = new Date();
+                const timestamp = now.getTime();
+                const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                
+                const todayLogs = smokingLogs.filter(l => l.day === day);
+                const lastSmoke = todayLogs.length > 0 ? todayLogs[0] : null;
+
+                let intervalStr = "首单";
+                let intervalMinutes = 0;
+                
+                if (lastSmoke) {
+                    const diffMs = timestamp - lastSmoke.timestamp;
+                    intervalMinutes = Math.floor(diffMs / 60000);
+                    const hours = Math.floor(intervalMinutes / 60);
+                    const mins = intervalMinutes % 60;
+                    intervalStr = `+${hours > 0 ? hours + 'h' : ''}${mins}m`;
+                }
+
+                const newSmokeLog = {
+                    id: timestamp,
+                    day: day,
+                    time: timeStr,
+                    timestamp: timestamp,
+                    reason: reason || "无理由波动", // 默认值
+                    interval: intervalStr,
+                    intervalRaw: intervalMinutes
+                };
+
+                setSmokeCount(prev => prev + 1);
+                setSmokingLogs(prev => [newSmokeLog, ...prev]);
+            };
+
+            const handlePunishment = (type) => {
+                let penalty = 0;
+                let desc = '';
+                if (type === 'porn') { penalty = -200; desc = '熔断: 浏览色情/手淫'; }
+                if (type === 'contract') { penalty = -500; desc = '熔断: 开合约单'; }
+                if (window.confirm(`确认触发熔断机制？这将亏损 ¥${Math.abs(penalty)}`)) {
+                    setPoints(prev => prev + penalty);
+                    addLog(desc, penalty, 'punishment');
+                }
+            };
+
+            const handleRedeem = (reward) => {
+                if (points >= reward.cost) {
+                    if (window.confirm(`确认消费 ¥${reward.cost} 兑换 ${reward.label}?`)) {
+                        setPoints(prev => prev - reward.cost);
+                        addLog(`消费: ${reward.label}`, -reward.cost, 'expense');
+                    }
+                } else {
+                    alert('可用资金不足');
+                }
+            };
+
+            const nextDay = () => {
+                const phase = getCurrentPhase();
+                const limit = phase.limit;
+                let dailySummary = `Day ${day} 结算`;
+                let dailyPoints = 0;
+
+                if (smokeCount <= limit) {
+                    dailyPoints += 100; 
+                    dailySummary += `: 控烟成功 (${smokeCount}/${limit})`;
+                } else {
+                    const over = smokeCount - limit;
+                    const penalty = over * 50; 
+                    dailyPoints -= penalty;
+                    dailySummary += `: 控烟失败 (超${over}根, 扣${penalty})`;
+                }
+
+                if (window.confirm(`${dailySummary}\n确认结束今日交易，开始新的一天？`)) {
+                    setPoints(prev => prev + dailyPoints);
+                    addLog(dailySummary, dailyPoints, dailyPoints >= 0 ? 'income' : 'punishment');
+                    
+                    setDay(prev => Number(prev) + 1); 
+                    setSmokeCount(0); 
+                    setJournalInput("");
+                    addLog(`进入第 ${Number(day) + 1} 天`, 0, 'system');
+                    
+                    setTimeout(() => {
+                        const rootDiv = document.querySelector('.overflow-y-auto');
+                        if (rootDiv) rootDiv.scrollTop = 0;
+                    }, 100);
+                }
+            };
+
+            const resetSystem = () => {
+                if (window.confirm('警告：确定要重置所有数据吗？这将清空你的所有资产。')) {
+                    setPoints(0); setDay(1); setSmokeCount(0);
+                    setCompletedTasks({}); setLogs([]); setJournals([]); setSmokingLogs([]);
+                    localStorage.removeItem('capital_system_v3_4_html');
+                }
+            };
+
+            // 手动兼容 V2 的样式逻辑
+            const getCounterStyle = () => {
+                const limit = currentPhase.limit;
+                if (limit === 0) return smokeCount === 0 ? 'bg-green-900-20 border-green-800' : 'bg-red-900 border-red-600 animate-pulse';
+                const ratio = smokeCount / limit;
+                if (ratio < 0.5) return 'bg-gray-800 border-gray-700'; 
+                if (ratio < 0.8) return 'bg-yellow-900-20 border-yellow-800'; 
+                if (ratio <= 1.0) return 'bg-orange-900-30 border-orange-700'; 
+                return 'bg-red-900-50 border-red-600'; 
+            };
+
+            const getCounterTextColor = () => {
+                const limit = currentPhase.limit;
+                if (limit === 0) return smokeCount > 0 ? 'text-red-500' : 'text-green-500';
+                const ratio = smokeCount / limit;
+                if (ratio < 0.5) return 'text-blue-400';
+                if (ratio < 0.8) return 'text-yellow-400';
+                if (ratio <= 1.0) return 'text-orange-500';
+                return 'text-red-500';
+            };
+
+            const currentLevel = getCurrentLevel();
+            const currentPhase = getCurrentPhase();
+            const currentTasks = getTasksForCurrentPhase();
+            const isJournalDoneToday = completedTasks[`${getDayKey()}_end_journal`];
+            const todaySmokingLogs = smokingLogs.filter(l => l.day === day);
+            
+            const groupedTasks = currentTasks.reduce((acc, task) => {
+                if (!acc[task.category]) acc[task.category] = [];
+                acc[task.category].push(task);
+                return acc;
+            }, {});
+
+            return (
+                <div className="min-h-screen bg-gray-900 text-gray-100 font-sans max-w-md mx-auto shadow-2xl overflow-hidden flex flex-col">
+                    <div className="bg-gray-800 p-4 border-b border-gray-700 sticky top-0 z-10">
+                        <div className="flex justify-between items-center mb-2">
+                            <div className="flex items-center space-x-2">
+                                <Icons.Activity className="text-green-500" size={20} />
+                                <h1 className="font-bold text-lg tracking-wider">CAPITAL RESTRUCTURING</h1>
+                            </div>
+                            <div className={`text-xs px-2 py-1 rounded border ${currentPhase.borderColor} ${currentPhase.color} bg-gray-900`}>
+                                Day {day} / 21
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end mt-4">
+                            <div>
+                                <div className="text-sm text-gray-400">总资产 (CNY)</div>
+                                <div className={`text-3xl font-mono font-bold ${points < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                    ¥ {points.toLocaleString()}
+                                </div>
+                            </div>
+                            <div className={`text-sm font-bold ${currentLevel.color}`}>{currentLevel.name}</div>
+                        </div>
+                        <div className={`mt-4 p-2 rounded bg-gray-900-50 border ${currentPhase.borderColor}`}>
+                            <div className={`text-xs font-bold ${currentPhase.color} mb-1`}>当前周期：{currentPhase.name}</div>
+                            <div className="text-xxs text-gray-400">{currentPhase.desc}</div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                        {activeTab === 'dashboard' && (
+                            <>
+                                <div className="bg-gray-800 p-4 rounded-xl border border-blue-900-50">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center space-x-2 text-blue-400">
+                                            <Icons.PenTool size={18} />
+                                            <h2 className="font-bold text-sm">闪电交易日志</h2>
+                                        </div>
+                                        {isJournalDoneToday && <Icons.CheckCircle2 size={16} className="text-green-500" />}
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <textarea 
+                                            value={journalInput}
+                                            onChange={(e) => setJournalInput(e.target.value)}
+                                            placeholder="此刻感受：焦虑？平静？想开单？写下来..."
+                                            className="flex-1 h-12 bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 resize-none"
+                                        />
+                                        <button onClick={handleJournalSubmit} className="w-16 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded flex flex-col items-center justify-center">
+                                            <Icons.Save size={14} className="mb-1" /> 存档
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className={`p-4 rounded-xl border transition-colors duration-500 ${getCounterStyle()}`}>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="flex items-center space-x-2">
+                                            <Icons.Flame className={getCounterTextColor()} size={20} />
+                                            <span className="font-bold text-sm text-gray-300">吸烟计数器</span>
+                                        </div>
+                                        <div className="text-xs text-gray-400">止损线: <span className="font-mono font-bold">{currentPhase.limit}</span></div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className={`text-5xl font-mono font-bold transition-colors duration-300 ${getCounterTextColor()}`}>{smokeCount}</span>
+                                            <span className="text-xxs text-gray-400 mt-1">{smokeCount > currentPhase.limit ? '已爆仓 (每根扣¥50)' : '仓位安全'}</span>
+                                        </div>
+                                        <button onClick={handleSmokeIncrement} className="w-20 h-20 bg-gray-900 border-2 border-gray-700 rounded-full flex flex-col items-center justify-center active:scale-95 active:bg-red-900-50 active:border-red-500 transition-all shadow-lg hover:border-gray-500">
+                                            <Icons.Cigarette className="text-gray-500 mb-1" size={24} />
+                                            <span className="text-xxs font-bold text-gray-400">+1 根</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* 今日交割单 - V2样式兼容修正 */}
+                                {todaySmokingLogs.length > 0 && (
+                                    <div className="bg-gray-800-50 rounded-xl p-4 border border-gray-700">
+                                        <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center">
+                                            <Icons.Clock size={12} className="mr-1 text-orange-400" /> 今日交割单 (Intraday)
+                                        </h3>
+                                        <div className="space-y-0 relative">
+                                            {todaySmokingLogs.map((log, idx) => (
+                                                <div key={log.id} className="flex relative pl-5 pb-4 timeline-item">
+                                                    <div className="timeline-line"></div>
+                                                    <div className="absolute left-0 top-1 w-4 h-4 rounded-full bg-gray-800 border-2 border-orange-500-50 flex items-center justify-center z-10">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-orange-400"></div>
+                                                    </div>
+                                                    <div className="flex-1 ml-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-mono text-gray-200 font-bold">{log.time}</span>
+                                                            <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${log.intervalRaw < 60 && log.interval !== '首单' ? 'bg-red-900-30 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
+                                                                {log.interval}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-400 mt-1 break-words">
+                                                            诱因: <span className="text-gray-300">{log.reason}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {Object.entries(groupedTasks).map(([category, tasks]) => (
+                                    <div key={category} className="mb-2">
+                                        <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 flex items-center">
+                                            <Icons.Zap size={12} className="mr-1 text-yellow-500" /> {category}
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {tasks.map(task => {
+                                                const isDone = completedTasks[`${getDayKey()}_${task.id}`];
+                                                if (task.isJournal) return null; 
+                                                return (
+                                                    <div key={task.id} onClick={() => handleTaskToggle(task)} className={`p-3 rounded-lg border flex justify-between items-center cursor-pointer transition-all ${isDone ? 'bg-green-900-20 border-green-800 opacity-50' : 'bg-gray-800 border-gray-700 hover:bg-gray-750'}`}>
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${isDone ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
+                                                                {isDone && <Icons.CheckCircle2 size={14} className="text-white" />}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className={isDone ? 'line-through text-gray-500' : 'text-gray-200 text-sm'}>{task.label}</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className={`text-sm font-mono ${isDone ? 'text-gray-500' : 'text-green-400'}`}>+¥{task.points}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <div className="mt-6 border-t border-gray-800 pt-4">
+                                    <h3 className="text-red-900-50 text-xs font-bold uppercase tracking-wider mb-2 flex items-center">
+                                        <Icons.ShieldAlert size={12} className="mr-1" /> 严重违规 (熔断)
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={() => handlePunishment('porn')} className="bg-gray-800 border border-gray-700 hover:border-red-500 p-2 rounded flex items-center justify-center space-x-2 transition-all">
+                                            <Icons.Ban className="text-red-500" size={16} /> <span className="text-xs text-gray-400">色情 (-200)</span>
+                                        </button>
+                                        <button onClick={() => handlePunishment('contract')} className="bg-gray-800 border border-gray-700 hover:border-red-500 p-2 rounded flex items-center justify-center space-x-2 transition-all">
+                                            <Icons.TrendingDown className="text-red-500" size={16} /> <span className="text-xs text-gray-400">合约 (-500)</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="pt-8 pb-8">
+                                    <button onClick={nextDay} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg flex items-center justify-center space-x-2">
+                                        <span>收盘结算 (进入 Day {Number(day) + 1})</span> <Icons.TrendingUp size={20} />
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {activeTab === 'journal' && (
+                            <div className="space-y-4">
+                                <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider flex items-center"><Icons.BookOpen size={12} className="mr-1" /> 历史复盘</h3>
+                                {journals.length === 0 && <div className="text-gray-500 text-center text-xs py-4">暂无日志记录，快去首页写一条吧！</div>}
+                                {journals.map((entry, idx) => (
+                                    <div key={idx} className="bg-gray-800-50 border border-gray-700 p-3 rounded">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-blue-400 text-xs font-bold">Day {entry.day}</span>
+                                            <span className="text-gray-500 text-xxs">{entry.date} {entry.timestamp}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{entry.content}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'shop' && (
+                            <div className="space-y-4">
+                                <div className="bg-gray-800 p-4 rounded-lg border border-yellow-700-50">
+                                    <div className="flex items-center space-x-2 mb-2 text-yellow-400"><Icons.ShoppingBag size={20} /><h2 className="font-bold">分红商城</h2></div>
+                                    <p className="text-xs text-gray-400">严禁透支本金。</p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {REWARDS_DATA.map(item => (
+                                        <button key={item.id} onClick={() => handleRedeem(item)} disabled={points < item.cost} className={`p-4 rounded-lg border flex justify-between items-center ${points >= item.cost ? 'bg-gray-800 border-gray-600 hover:bg-gray-700' : 'bg-gray-800-50 border-gray-800 opacity-50 cursor-not-allowed'}`}>
+                                            <div className="flex items-center space-x-3"><div className="p-2 bg-gray-700 rounded-full text-blue-400">{item.icon}</div><span className="font-bold text-sm">{item.label}</span></div>
+                                            <div className="text-yellow-400 font-mono font-bold text-sm">-¥{item.cost}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'logs' && (
+                            <div className="space-y-2">
+                                <h2 className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">交易流水</h2>
+                                {logs.map(log => (
+                                    <div key={log.id} className="flex justify-between items-center text-sm p-2 border-b border-gray-800">
+                                        <div><div className="text-gray-300">{log.desc}</div><div className="text-xs text-gray-500">{log.time}</div></div>
+                                        <div className={`font-mono font-bold ${log.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>{log.amount > 0 ? '+' : ''}¥{Math.abs(log.amount)}</div>
+                                    </div>
+                                ))}
+                                <div className="pt-8 flex justify-center">
+                                    <button onClick={resetSystem} className="flex items-center space-x-1 text-xs text-red-900 hover:text-red-500"><Icons.RotateCcw size={12} /><span>重置系统 (破产清算)</span></button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-gray-800 border-t border-gray-700 p-2 grid grid-cols-4 gap-1">
+                        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center justify-center p-2 rounded ${activeTab === 'dashboard' ? 'text-green-400 bg-gray-700' : 'text-gray-400'}`}><Icons.Activity size={20} /><span className="text-xxs mt-1">操盘室</span></button>
+                        <button onClick={() => setActiveTab('journal')} className={`flex flex-col items-center justify-center p-2 rounded ${activeTab === 'journal' ? 'text-blue-400 bg-gray-700' : 'text-gray-400'}`}><Icons.BookOpen size={20} /><span className="text-xxs mt-1">日志</span></button>
+                        <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center justify-center p-2 rounded ${activeTab === 'shop' ? 'text-yellow-400 bg-gray-700' : 'text-gray-400'}`}><Icons.ShoppingBag size={20} /><span className="text-xxs mt-1">商城</span></button>
+                        <button onClick={() => setActiveTab('logs')} className={`flex flex-col items-center justify-center p-2 rounded ${activeTab === 'logs' ? 'text-gray-200 bg-gray-700' : 'text-gray-400'}`}><Icons.TrendingUp size={20} /><span className="text-xxs mt-1">流水</span></button>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<CapitalRestructuringApp />);
+    </script>
+</body>
+</html>
